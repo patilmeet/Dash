@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RemoteCam — Mission Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Fira+Code:wght@300;400;500&family=Bebas+Neue&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #080b14;
+  --bg2:       #0d1120;
+  --surface:   #111828;
+  --surface2:  #18202f;
+  --border:    #1e2a3a;
+  --border2:   #243040;
+  --gold:      #f5c842;
+  --gold-dim:  rgba(245,200,66,.15);
+  --blue:      #4f9eff;
+  --blue-dim:  rgba(79,158,255,.12);
+  --red:       #ff5566;
+  --red-dim:   rgba(255,85,102,.12);
+  --green:     #3de8a0;
+  --green-dim: rgba(61,232,160,.1);
+  --text:      #a8b8cc;
+  --text2:     #6b7f96;
+  --heading:   #e2eaf5;
+  --mono:      'Fira Code', monospace;
+  --sans:      'Space Grotesk', sans-serif;
+  --display:   'Bebas Neue', sans-serif;
+}
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* Noise overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: .6;
+}
+
+/* Diagonal grid bg */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(79,158,255,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79,158,255,.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── LOGIN SCREEN ─── */
+#login-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+
+.login-wrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  max-width: 440px;
+  padding: 20px;
+}
+
+/* Big decorative title above the box */
+.login-hero {
+  font-family: var(--display);
+  font-size: clamp(52px, 10vw, 80px);
+  color: var(--heading);
+  letter-spacing: .06em;
+  line-height: 1;
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.login-hero span {
+  color: var(--gold);
+}
+
+.login-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .25em;
+  color: var(--text2);
+  text-transform: uppercase;
+  margin-bottom: 36px;
+  text-align: center;
+}
+
+.login-box {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  padding: 36px 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Corner accent lines */
+.login-box::before,
+.login-box::after {
+  content: '';
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-color: var(--gold);
+  border-style: solid;
+}
+.login-box::before {
+  top: 0; left: 0;
+  border-width: 2px 0 0 2px;
+  border-radius: 16px 0 0 0;
+}
+.login-box::after {
+  bottom: 0; right: 0;
+  border-width: 0 2px 2px 0;
+  border-radius: 0 0 16px 0;
+}
+
+.login-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .18em;
+  color: var(--text2);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 15px 20px;
+  background: var(--heading);
+  color: #0d1120;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+  letter-spacing: .01em;
+}
+
+.btn-google:hover {
+  background: #fff;
+  box-shadow: 0 0 40px rgba(245,200,66,.25), 0 4px 20px rgba(0,0,0,.3);
+  transform: translateY(-2px);
+}
+
+.login-note {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 18px;
+  text-align: center;
+  letter-spacing: .06em;
+}
+
+/* ─── APP SHELL ─── */
+#app {
+  display: none;
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  height: 58px;
+  background: rgba(8,11,20,.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-left { display: flex; align-items: center; gap: 20px; }
+
+.logo {
+  font-family: var(--display);
+  font-size: 22px;
+  color: var(--heading);
+  letter-spacing: .1em;
+  line-height: 1;
+}
+.logo span { color: var(--gold); }
+
+.divider-v {
+  width: 1px;
+  height: 24px;
+  background: var(--border2);
+}
+
+.conn-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text2);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.conn-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text2);
+  flex-shrink: 0;
+}
+.conn-status.live .conn-dot {
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: breathe 2s ease-in-out infinite;
+}
+.conn-status.live { color: var(--green); }
+
+@keyframes breathe {
+  0%,100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+.topbar-right { display: flex; align-items: center; gap: 16px; }
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 4px 14px 4px 4px;
+}
+.user-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border2);
+}
+.user-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--heading);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-out {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: 6px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: all .15s;
+  text-transform: uppercase;
+}
+.btn-out:hover { color: var(--red); border-color: var(--red); background: var(--red-dim); }
+
+/* ─── LAYOUT ─── */
+.layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  min-height: calc(100vh - 58px);
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.s-section { display: flex; flex-direction: column; gap: 12px; }
+
+.s-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.s-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Camera selector */
+.cam-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.cam-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all .18s;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text2);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.cam-card .cam-icon { font-size: 24px; }
+.cam-card:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+.cam-card.active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: var(--gold-dim);
+  box-shadow: inset 0 0 20px rgba(245,200,66,.05);
+}
+
+/* Action buttons */
+.action-list { display: flex; flex-direction: column; gap: 8px; }
+
+.act-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  transition: all .18s;
+  text-align: left;
+  letter-spacing: .01em;
+}
+
+.act-btn .act-icon {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.act-btn .act-desc {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text2);
+  letter-spacing: .06em;
+  margin-top: 1px;
+}
+
+.act-btn:disabled { opacity: .35; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+.act-btn.primary {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #0a0c0f;
+}
+.act-btn.primary .act-desc { color: rgba(0,0,0,.5); }
+.act-btn.primary .act-icon { background: rgba(0,0,0,.15); }
+.act-btn.primary:not(:disabled):hover {
+  background: #ffd63a;
+  box-shadow: 0 0 30px rgba(245,200,66,.35);
+  transform: translateY(-1px);
+}
+
+.act-btn.blue .act-icon { background: var(--blue-dim); }
+.act-btn.blue:not(:disabled):hover { border-color: var(--blue); background: var(--blue-dim); color: var(--blue); transform: translateY(-1px); }
+
+.act-btn.plain:not(:disabled):hover { border-color: var(--border2); background: var(--surface2); transform: translateY(-1px); }
+
+.act-btn.danger { color: var(--red); border-color: rgba(255,85,102,.25); }
+.act-btn.danger .act-icon { background: var(--red-dim); }
+.act-btn.danger:not(:disabled):hover { border-color: var(--red); background: var(--red-dim); transform: translateY(-1px); }
+
+/* Config */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+.field-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--heading);
+  font-family: var(--mono);
+  font-size: 13px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  width: 100%;
+}
+.field-input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(245,200,66,.08);
+}
+
+/* ─── MAIN PANEL ─── */
+.panel {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--bg);
+}
+
+/* Stats row */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.stat-card.gold::before { background: var(--gold); }
+.stat-card.blue::before { background: var(--blue); }
+.stat-card.green::before { background: var(--green); }
+
+.stat-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+.stat-value {
+  font-family: var(--display);
+  font-size: 32px;
+  color: var(--heading);
+  letter-spacing: .04em;
+  line-height: 1;
+}
+.stat-card.gold .stat-value { color: var(--gold); }
+.stat-card.blue .stat-value { color: var(--blue); }
+.stat-card.green .stat-value { color: var(--green); }
+.stat-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text2);
+}
+
+/* Viewer grid */
+.viewer-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+  flex: 1;
+}
+
+/* Photo panel */
+.photo-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 360px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+
+.panel-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-title .dot-ind {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--border2);
+}
+.panel-title .dot-ind.live { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+.photo-meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text2);
+  letter-spacing: .06em;
+}
+
+.photo-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg2);
+  position: relative;
+  min-height: 280px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--text2);
+}
+.empty-icon {
+  font-size: 52px;
+  opacity: .2;
+  filter: grayscale(1);
+}
+.empty-msg {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.8;
+}
+
+#captured-img {
+  max-width: 100%;
+  max-height: 420px;
+  display: none;
+  object-fit: contain;
+}
+
+/* Spinner */
+.spinner-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  background: rgba(8,11,20,.8);
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+.spinner-overlay.active { display: flex; }
+.spin-ring {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--border2);
+  border-top-color: var(--gold);
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin-text {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--gold);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.photo-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: none;
+  align-items: center;
+  gap: 12px;
+}
+.img-url {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text2);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: .04em;
+}
+.btn-open {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  color: var(--gold);
+  background: var(--gold-dim);
+  border: 1px solid rgba(245,200,66,.3);
+  border-radius: 6px;
+  padding: 6px 14px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all .15s;
+  cursor: pointer;
+}
+.btn-open:hover { background: rgba(245,200,66,.25); }
+
+/* Right sidebar */
+.right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Response card */
+.resp-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  display: none;
+}
+.resp-card.show { display: block; }
+
+.resp-body {
+  padding: 16px 18px;
+  font-family: var(--mono);
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.resp-row { display: flex; align-items: baseline; gap: 12px; }
+.resp-key { color: var(--text2); min-width: 80px; font-size: 11px; letter-spacing: .06em; }
+.resp-val { color: var(--heading); }
+.resp-val.ok  { color: var(--green); }
+.resp-val.err { color: var(--red); }
+.resp-val.warn { color: var(--gold); }
+
+/* Activity log */
+.log-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  flex: 1;
+}
+.log-actions { display: flex; align-items: center; gap: 8px; }
+.btn-clear-log {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .1em;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all .15s;
+}
+.btn-clear-log:hover { color: var(--red); border-color: rgba(255,85,102,.4); }
+
+#log-output {
+  padding: 14px 18px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 2;
+  max-height: 220px;
+  overflow-y: auto;
+  color: var(--text2);
+}
+#log-output::-webkit-scrollbar { width: 4px; }
+#log-output::-webkit-scrollbar-track { background: transparent; }
+#log-output::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+.log-line { display: flex; gap: 14px; align-items: baseline; }
+.log-time { color: var(--border2); flex-shrink: 0; font-size: 10px; }
+.log-line.ok   .log-msg { color: var(--green); }
+.log-line.warn .log-msg { color: var(--gold); }
+.log-line.err  .log-msg { color: var(--red); }
+.log-line.info .log-msg { color: var(--text); }
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 999;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .06em;
+  padding: 12px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  transform: translateY(80px) scale(.96);
+  opacity: 0;
+  transition: all .3s cubic-bezier(.34,1.56,.64,1);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#toast.show { transform: none; opacity: 1; }
+#toast.ok  { border-color: rgba(61,232,160,.35); color: var(--green); }
+#toast.err { border-color: rgba(255,85,102,.35); color: var(--red); }
+#toast::before {
+  content: attr(data-icon);
+  font-size: 16px;
+}
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  .viewer-grid { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: 1fr 1fr; }
+  .topbar { padding: 0 16px; }
+  .panel { padding: 16px; }
+  .sidebar { padding: 20px 16px; }
+  .user-name { display: none; }
+}
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.panel > *, .sidebar > * {
+  animation: fadein .4s ease both;
+}
+.sidebar > *:nth-child(1) { animation-delay: .05s; }
+.sidebar > *:nth-child(2) { animation-delay: .1s; }
+.sidebar > *:nth-child(3) { animation-delay: .15s; }
+.sidebar > *:nth-child(4) { animation-delay: .2s; }
+.panel > *:nth-child(1) { animation-delay: .07s; }
+.panel > *:nth-child(2) { animation-delay: .14s; }
+.panel > *:nth-child(3) { animation-delay: .21s; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════ LOGIN ════════════════ -->
+<div id="login-screen">
+  <div class="login-wrap">
+    <div class="login-hero">REMOTE<span>CAM</span></div>
+    <div class="login-eyebrow">Mission Control · v2.0</div>
+    <div class="login-box">
+      <div class="login-label">Authenticate to proceed</div>
+      <button class="btn-google" id="btn-google-login">
+        <svg width="18" height="18" viewBox="0 0 48 48">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        Continue with Google
+      </button>
+      <div class="login-note">Access restricted to authorised accounts only</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ APP ════════════════ -->
+<div id="app">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="logo">REMOTE<span>CAM</span></div>
+      <div class="divider-v"></div>
+      <div class="conn-status" id="conn-status">
+        <div class="conn-dot"></div>
+        <span id="conn-text">CONNECTING</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-chip">
+        <img class="user-avatar" id="user-avatar" src="" alt="" />
+        <span class="user-name" id="user-name"></span>
+      </div>
+      <button class="btn-out" id="btn-signout">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- Layout -->
+  <div class="layout">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <!-- Camera -->
+      <div class="s-section">
+        <div class="s-label">Camera</div>
+        <div class="cam-grid">
+          <div class="cam-card active" id="cam-back" onclick="selectCamera('back')">
+            <div class="cam-icon">📷</div>
+            <div>Back</div>
+          </div>
+          <div class="cam-card" id="cam-front" onclick="selectCamera('front')">
+            <div class="cam-icon">🤳</div>
+            <div>Front</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="s-section">
+        <div class="s-label">Commands</div>
+        <div class="action-list">
+          <button class="act-btn primary" id="btn-capture" onclick="sendCapture()" disabled>
+            <div class="act-icon">📸</div>
+            <div>
+              <div>Capture Photo</div>
+              <div class="act-desc">Trigger remote camera</div>
+            </div>
+          </button>
+          <button class="act-btn blue" id="btn-ping" onclick="sendPing()" disabled>
+            <div class="act-icon">◉</div>
+            <div>
+              <div>Ping Device</div>
+              <div class="act-desc">Check device is alive</div>
+            </div>
+          </button>
+          <button class="act-btn plain" id="btn-status-cmd" onclick="sendStatus()" disabled>
+            <div class="act-icon">≡</div>
+            <div>
+              <div>Log Status</div>
+              <div class="act-desc">Fetch device info</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Config -->
+      <div class="s-section">
+        <div class="s-label">Configuration</div>
+        <div class="field">
+          <div class="field-label">Firestore Collection</div>
+          <input class="field-input" id="collection-input" type="text" value="commands" placeholder="commands" />
+        </div>
+      </div>
+
+      <!-- Danger -->
+      <div class="s-section" style="margin-top:auto">
+        <div class="s-label">Danger Zone</div>
+        <button class="act-btn danger" id="btn-clear" onclick="clearCommand()" disabled>
+          <div class="act-icon">✕</div>
+          <div>
+            <div>Clear Command</div>
+            <div class="act-desc" style="color:rgba(255,85,102,.5)">Remove active command</div>
+          </div>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Main panel -->
+    <div class="panel">
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card gold">
+          <div class="stat-label">Commands Sent</div>
+          <div class="stat-value" id="stat-cmds">0</div>
+          <div class="stat-sub">this session</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-label">Last Command</div>
+          <div class="stat-value" id="stat-last" style="font-size:16px;font-family:var(--mono);margin-top:4px;letter-spacing:.04em">—</div>
+          <div class="stat-sub" id="stat-device">no device response</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Session Time</div>
+          <div class="stat-value" id="stat-time">0:00</div>
+          <div class="stat-sub">minutes active</div>
+        </div>
+      </div>
+
+      <!-- Viewer + right col -->
+      <div class="viewer-grid">
+
+        <!-- Photo viewer -->
+        <div class="photo-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="dot-ind" id="photo-dot"></div>
+              Last Capture
+            </div>
+            <div class="photo-meta" id="photo-meta">—</div>
+          </div>
+          <div class="photo-body" id="photo-body">
+            <div class="empty-state" id="photo-placeholder">
+              <div class="empty-icon">🛰</div>
+              <div class="empty-msg">No capture yet<br/>Send a command to get started</div>
+            </div>
+            <img id="captured-img" src="" alt="Captured photo" />
+            <div class="spinner-overlay" id="spinner">
+              <div class="spin-ring"></div>
+              <div class="spin-text" id="spinner-msg">WAITING...</div>
+            </div>
+          </div>
+          <div class="photo-footer" id="photo-footer">
+            <div class="img-url" id="img-url-text"></div>
+            <a class="btn-open" id="btn-open-img" href="#" target="_blank">↗ Open</a>
+          </div>
+        </div>
+
+        <!-- Right column -->
+        <div class="right-col">
+
+          <!-- Response card -->
+          <div class="resp-card" id="resp-card">
+            <div class="panel-header">
+              <div class="panel-title">
+                <div class="dot-ind live"></div>
+                Device Response
+              </div>
+            </div>
+            <div class="resp-body" id="resp-body"></div>
+          </div>
+
+          <!-- Log -->
+          <div class="log-card">
+            <div class="panel-header">
+              <div class="panel-title">Activity Log</div>
+              <div class="log-actions">
+                <button class="btn-clear-log" onclick="clearLog()">Clear</button>
+              </div>
+            </div>
+            <div id="log-output"></div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast" data-icon=""></div>
+
+<!-- ════ FIREBASE ════ -->
+<script type="module">
+import { initializeApp }           from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+                                   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp, deleteDoc }
+                                   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyBblAnGXU1RlJsmh7kq_j8EknUnjfTnsOE",
+  authDomain:        "weber-e20ea.firebaseapp.com",
+  projectId:         "weber-e20ea",
+  storageBucket:     "weber-e20ea.firebasestorage.app",
+  messagingSenderId: "736413610937",
+  appId:             "1:736413610937:android:eb7ef89b94a4b045bfbc68"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+let selectedCamera   = 'back';
+let responseListener = null;
+let cmdCount         = 0;
+let sessionStart     = null;
+
+// ── Session timer ──────────────────────
+function startTimer() {
+  sessionStart = Date.now();
+  setInterval(() => {
+    if (!sessionStart) return;
+    const mins = Math.floor((Date.now() - sessionStart) / 60000);
+    const secs = Math.floor(((Date.now() - sessionStart) % 60000) / 1000);
+    document.getElementById('stat-time').textContent =
+      `${mins}:${secs.toString().padStart(2,'0')}`;
+  }, 1000);
+}
+
+// ── Helpers ────────────────────────────
+function log(msg, type = 'info') {
+  const out  = document.getElementById('log-output');
+  const time = new Date().toTimeString().slice(0,8);
+  const line = document.createElement('div');
+  line.className = `log-line ${type}`;
+  line.innerHTML = `<span class="log-time">${time}</span><span class="log-msg">${msg}</span>`;
+  out.appendChild(line);
+  out.scrollTop = out.scrollHeight;
+}
+
+function toast(msg, type = 'ok') {
+  const icons = { ok: '✓', err: '✕' };
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.setAttribute('data-icon', icons[type] || '·');
+  t.className = `show ${type}`;
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.className = '', 3000);
+}
+
+function setButtons(on) {
+  ['btn-capture','btn-ping','btn-status-cmd','btn-clear'].forEach(id => {
+    document.getElementById(id).disabled = !on;
+  });
+}
+
+function showSpinner(msg) {
+  document.getElementById('spinner-msg').textContent = msg;
+  document.getElementById('spinner').classList.add('active');
+}
+function hideSpinner() {
+  document.getElementById('spinner').classList.remove('active');
+}
+
+function getCollection() {
+  return document.getElementById('collection-input').value.trim() || 'commands';
+}
+
+// ── Camera ────────────────────────────
+window.selectCamera = side => {
+  selectedCamera = side;
+  document.getElementById('cam-back').classList.toggle('active', side === 'back');
+  document.getElementById('cam-front').classList.toggle('active', side === 'front');
+  log(`Camera → ${side}`, 'info');
+};
+
+// ── Auth ──────────────────────────────
+document.getElementById('btn-google-login').addEventListener('click', async () => {
+  try {
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch (e) {
+    toast('Sign-in failed: ' + e.message, 'err');
+  }
+});
+
+document.getElementById('btn-signout').addEventListener('click', () => signOut(auth));
+
+onAuthStateChanged(auth, user => {
+  if (user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    document.getElementById('user-name').textContent = user.displayName;
+    document.getElementById('user-avatar').src = user.photoURL || '';
+    log(`Signed in as ${user.displayName}`, 'ok');
+    setButtons(true);
+    startTimer();
+    startListener();
+  } else {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+    if (responseListener) { responseListener(); responseListener = null; }
+    setButtons(false);
+    sessionStart = null;
+  }
+});
+
+// ── Listener ──────────────────────────
+function startListener() {
+  if (responseListener) responseListener();
+
+  const ref = doc(db, getCollection(), 'rc-response');
+  responseListener = onSnapshot(ref, snap => {
+    const status = document.getElementById('conn-status');
+    status.classList.add('live');
+    document.getElementById('conn-text').textContent = 'CONNECTED';
+
+    if (!snap.exists()) return;
+
+    const d      = snap.data();
+    const cmd    = d.command     || '?';
+    const st     = d.status      || '?';
+    const imgUrl = d.imageUrl    || null;
+    const device = d.deviceModel || d.device || '?';
+    const from   = d.sentFrom   || '?';
+
+    hideSpinner();
+
+    // Update last cmd stat
+    document.getElementById('stat-last').textContent  = cmd;
+    document.getElementById('stat-device').textContent = device;
+
+    // Response card
+    const card = document.getElementById('resp-card');
+    card.classList.add('show');
+    document.getElementById('resp-body').innerHTML = `
+      <div class="resp-row"><span class="resp-key">command</span><span class="resp-val">${cmd}</span></div>
+      <div class="resp-row"><span class="resp-key">status</span><span class="resp-val ${st==='ok'||st==='pong'?'ok':'err'}">${st}</span></div>
+      <div class="resp-row"><span class="resp-key">device</span><span class="resp-val warn">${device}</span></div>
+      <div class="resp-row"><span class="resp-key">sentFrom</span><span class="resp-val">${from}</span></div>
+      ${d.androidVer ? `<div class="resp-row"><span class="resp-key">android</span><span class="resp-val">${d.androidVer}</span></div>` : ''}
+    `;
+
+    if (imgUrl && cmd === 'CAPTURE_CAMERA') {
+      const img = document.getElementById('captured-img');
+      img.src = imgUrl;
+      img.style.display = 'block';
+      document.getElementById('photo-placeholder').style.display = 'none';
+      document.getElementById('photo-footer').style.display = 'flex';
+      document.getElementById('img-url-text').textContent = imgUrl;
+      document.getElementById('btn-open-img').href = imgUrl;
+      document.getElementById('photo-meta').textContent =
+        new Date().toLocaleTimeString() + ' · ' + (d.camera||'?') + ' cam';
+      document.getElementById('photo-dot').classList.add('live');
+      log(`📸 Photo received from ${device}`, 'ok');
+      toast('Photo captured!', 'ok');
+    } else if (cmd === 'PING' && (st === 'pong' || st === 'ok')) {
+      log(`◉ Pong from ${device}`, 'ok');
+      toast('Device is alive!', 'ok');
+    } else if (cmd === 'LOG_STATUS') {
+      log(`≡ Status from ${device} · Android ${d.androidVer||'?'}`, 'info');
+      toast('Status received', 'ok');
+    } else {
+      log(`↩ Response [${cmd}]: ${st}`, 'info');
+    }
+  }, err => {
+    document.getElementById('conn-status').classList.remove('live');
+    document.getElementById('conn-text').textContent = 'DISCONNECTED';
+    log('Firestore error: ' + err.message, 'err');
+  });
+}
+
+// ── Send commands ─────────────────────
+async function sendCommand(command, payload) {
+  const ref = doc(db, getCollection(), 'rc-active');
+  try {
+    await setDoc(ref, {
+      command, payload,
+      timestamp: serverTimestamp(),
+      sentFrom: 'web-dashboard',
+      status: 'pending'
+    });
+    cmdCount++;
+    document.getElementById('stat-cmds').textContent = cmdCount;
+    log(`→ Sent: ${command}`, 'info');
+    return true;
+  } catch (e) {
+    log(`✗ Failed: ${e.message}`, 'err');
+    toast('Send failed: ' + e.message, 'err');
+    return false;
+  }
+}
+
+window.sendCapture = async () => {
+  showSpinner(`CAPTURING ${selectedCamera.toUpperCase()} CAMERA…`);
+  document.getElementById('photo-placeholder').style.display = 'flex';
+  document.getElementById('captured-img').style.display = 'none';
+  document.getElementById('photo-footer').style.display = 'none';
+  document.getElementById('photo-meta').textContent = '—';
+  document.getElementById('photo-dot').classList.remove('live');
+  log(`→ Requesting ${selectedCamera} camera capture…`, 'info');
+  const ok = await sendCommand('CAPTURE_CAMERA', { camera: selectedCamera });
+  if (!ok) hideSpinner();
+};
+
+window.sendPing = async () => {
+  log('→ Pinging device…', 'info');
+  showSpinner('PINGING DEVICE…');
+  const ok = await sendCommand('PING', {});
+  if (!ok) hideSpinner();
+  else setTimeout(hideSpinner, 8000);
+};
+
+window.sendStatus = async () => {
+  log('→ Requesting device status…', 'info');
+  showSpinner('FETCHING STATUS…');
+  const ok = await sendCommand('LOG_STATUS', {});
+  if (!ok) hideSpinner();
+  else setTimeout(hideSpinner, 8000);
+};
+
+window.clearCommand = async () => {
+  try {
+    await deleteDoc(doc(db, getCollection(), 'rc-active'));
+    log('✓ Active command cleared', 'warn');
+    toast('Command cleared', 'ok');
+  } catch (e) {
+    log('✗ Clear failed: ' + e.message, 'err');
+  }
+};
+
+window.clearLog = () => { document.getElementById('log-output').innerHTML = ''; };
+
+document.getElementById('collection-input').addEventListener('change', () => {
+  if (auth.currentUser) {
+    log(`Collection → ${getCollection()}`, 'warn');
+    startListener();
+  }
+});
+
+log('Mission Control ready — sign in to begin', 'info');
+</script>
+</body>
+</html>
